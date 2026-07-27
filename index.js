@@ -133,4 +133,66 @@ class SlackAIAgent{
             throw error;
         }
     }
+
+    async doBasicResearch(){
+        const results = []
+
+        try {
+            if (memberInfo.email && !this.isPersonalEmail(memberInfo.email)){
+                const domain = memberInfo.email.split('@')[1];
+                const companyInfo = await this.getCompanyInfo(domain);
+                if (companyInfo) results.push(companyInfo);
+                if (memberInfo.name){
+                    const githubInfo = await this.getGithubInfo(memberInfo.name);
+                    if(githubInfo) results.push(githubInfo)
+                }
+            }
+        } catch (error) {
+            log.error('Research error:', error.message);
+        }
+        return results;
+    }
+    async getCompanyInfo(domain){
+        try {
+            const response = await axios.get(`https://www.${domain}`, {
+                timeout: 5000,
+                headers: {'User-Agent': 'Mozilla/5.0'}
+            })
+
+            const titleMatch = response.data.match(/<title>(.*)<\/title>/i)
+            const title = titleMatch ? titleMatch[1] : `Company: ${domain}`
+
+            return {
+                url: `https://www.${domain}`,
+                title: title,
+                content: `Company website for ${domain}`,
+                type: 'company'
+            }
+        } catch (error) {
+            log.error(`Could not fetch ${domain}:`, error.message)
+            return null;
+        }
+    }
+
+    async getGithubInfo(name){
+        try {
+            const response = await axios.get(
+                `https://api.github.com/search/users?q=${encodedURIComponent(name)}`,
+                { timeout: 5000 }
+            )
+
+            if(response.data.items && response.data.items.length > 0){
+                const user = response.data.items[0];
+                return {
+                    url: user.html_url,
+                    title: `GitHub: ${user.login}`,
+                    content: `${user.public_repos} public repositories`,
+                    type: 'github'
+                }
+            }
+        } catch (error) {
+            log.debug('GitHub search error:', error.message)
+        }
+        return null;
+    }
 }
