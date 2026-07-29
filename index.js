@@ -358,3 +358,15 @@ class SlackAIAgent{
         process.exit(0)
     }
 }
+
+const agent = new SlackAIAgent()
+
+process.on('SIGNIT', () => agent.stop())
+process.on('SIGTERM', () => agent.stop())
+
+agent.start().catch(error=>{
+    console.error('Startup failed', error.message);
+    process.exit(1)
+})
+
+export default agent
