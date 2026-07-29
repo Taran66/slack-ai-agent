@@ -7,6 +7,8 @@ import express from 'express'
 import dotenv from 'dotenv'
 import axios from 'axios';
 
+import { initDatabase, saveMemberAnalysis, markAsSentToSlack, closeDatabase } from './db.js';
+
 dotenv.config();
 
 const log = {
@@ -124,7 +126,6 @@ class SlackAIAgent{
                 await markAsSenttoSlack(analysisId)
             }
 
-            const
         } catch (error) {
             log.error(`Error processing ${memberInfo.name}:`, error.message);
             if (analysisId){
@@ -324,7 +325,7 @@ class SlackAIAgent{
 
             const port = process.env.PORT || 3000;
             this.server = this.app.listen(port, () => {
-                log.info('Express server running on port ${port}');
+                log.info(`Express server running on port ${port}`);
             })
 
             await this.slack.start();
