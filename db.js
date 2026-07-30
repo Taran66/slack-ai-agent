@@ -62,7 +62,7 @@ export async function initDatabase() {
 }
 
 export async function saveMemberAnalysis(memberInfo, analysis, researchData){
-    const client = await pool.client();
+    const client = await pool.connect();
     try {
         const result = await client.query(
             `INSERT INTO member_analyses (
@@ -76,18 +76,18 @@ export async function saveMemberAnalysis(memberInfo, analysis, researchData){
             recommendations, 
             research_data
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id`
-        [
-            memberInfo.id || null,
-            memberInfo.name,
-            memberInfo.email || null,
-            memberInfo.title || null,
-            memberInfo.timezone || null,
-            analysis.fitScore,
-            JSON.stringify(analysis.insights),
-            JSON.stringify(analysis.recommendations),
-            JSON.stringify(researchData)
-        ])
+        RETURNING id`,
+            [
+                memberInfo.id || null,
+                memberInfo.name,
+                memberInfo.email || null,
+                memberInfo.title || null,
+                memberInfo.timezone || null,
+                analysis.fitScore,
+                JSON.stringify(analysis.insights),
+                JSON.stringify(analysis.recommendations),
+                JSON.stringify(researchData)
+            ]);
 
         console.log(`[INFO] Saved analysis to database with ID: ${result.rows[0].id}`);
         return result.rows[0].id;

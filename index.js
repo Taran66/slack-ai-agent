@@ -2,6 +2,7 @@ import pkg from '@slack/bolt'
 const { App } = pkg;
 import { WebClient } from '@slack/web-api';
 import { ChatOpenAI } from '@langchain/openai';
+import { ChatGroq } from '@langchain/groq';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import express from 'express'
 import dotenv from 'dotenv'
@@ -27,13 +28,13 @@ class SlackAIAgent{
             appToken: process.env.SLACK_APP_TOKEN
         })
         this.webClient = new WebClient(process.env.SLACK_BOT_TOKEN);
-        this.openai = new ChatOpenAI({
-            model: "gpt-4",
+        this.groq = new ChatGroq({
+            model: "llama-3.1-8b-instant",
             temperature: 0.3,
-            apiKey: process.env.OPENAI_API_KEY
+            apiKey: process.env.GROQ_API_KEY
         });
 
-        this.setupSlackEvents;
+        this.setupSlackEvents();
         this.setupExpress();
     }
 
@@ -123,7 +124,7 @@ class SlackAIAgent{
             await this.postAnalysisToChannel(memberInfo, analysis, researchData)
 
             if(analysisId){
-                await markAsSenttoSlack(analysisId)
+                await markAsSentToSlack(analysisId)
             }
 
         } catch (error) {
@@ -135,7 +136,7 @@ class SlackAIAgent{
         }
     }
 
-    async doBasicResearch(){
+    async doBasicResearch(memberInfo){
         const results = []
 
         try {
@@ -178,7 +179,7 @@ class SlackAIAgent{
     async getGithubInfo(name){
         try {
             const response = await axios.get(
-                `https://api.github.com/search/users?q=${encodedURIComponent(name)}`,
+                `https://api.github.com/search/users?q=${encodeURIComponent(name)}`,
                 { timeout: 5000 }
             )
 
@@ -224,7 +225,7 @@ class SlackAIAgent{
             const researchSummary = researchData.length > 0 ? researchData.map(r => `${r.title}: ${r.content}`).join(`\\n`)
             : 'Limited research data available'
 
-            const chain = prompt.pipe(this.openai);
+            const chain = prompt.pipe(this.groq);
             const result = await chain.invoke({
                 name: memberInfo.name,
                 email: memberInfo.email || 'Not provided',
@@ -239,8 +240,8 @@ class SlackAIAgent{
             const analysis = JSON.parse(cleanedResponse)
 
             return {
-                fitscore: Math.max(0, Math.min(100, analysis.fitscore || 50)),
-                insights: Array.isArray(analysis.insights) ? analysis.insigths : ['Analysis Completed'],
+                fitScore: Math.max(0, Math.min(100, analysis.fitScore || 50)),
+                insights: Array.isArray(analysis.insights) ? analysis.insights : ['Analysis Completed'],
                 recommendations: Array.isArray(analysis.recommendations) ? analysis.recommendations : ['Follow up recommended']
             }
 
@@ -279,7 +280,8 @@ class SlackAIAgent{
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*Insights:*\\${analysis.insights.map(i => `• ${i}`).join('\\n')}`
+                    text: `*Insights:*\n${analysis.insights.map(i =>
+                        `• ${i}`).join('\n')}`
                 }
             })
         }
@@ -289,8 +291,10 @@ class SlackAIAgent{
                 type: 'section',
                 text: {
                     type: 'mrkdwn',
-                    text: `*Recommendations:*\\${analysis.recommendations.map(i => `• ${i}`).join('\\n')}`
+                    text: `*Recommendations:*\n${analysis.recommendations.map(i =>
+                        `• ${i}`).join('\n')}`
                 }
+
             })
         }
 
@@ -299,7 +303,7 @@ class SlackAIAgent{
             elements: [
                 {
                     type: 'mrkdwn',
-                    text: `Analyzed: ${new Date.toISOString()}`
+                    text: `Analyzed: ${new Date().toISOString()}`
                 }
             ]
         })
@@ -307,8 +311,13 @@ class SlackAIAgent{
         await this.webClient.chat.postMessage({
             channel: process.env.SLACK_PRIVATE_CHANNEL_ID,
             text: `New Member Analysis: ${member.name}(${analysis.fitScore}/100)`,
-            blocks
-        })
+            attachments: [
+                {
+                    color: color,
+                    blocks: blocks
+                }
+            ]
+        });
 
         log.info(`Analysis posted to channel for ${member.name}`)
     }
@@ -362,7 +371,7 @@ class SlackAIAgent{
 
 const agent = new SlackAIAgent()
 
-process.on('SIGNIT', () => agent.stop())
+process.on('SIGINT', () => agent.stop())
 process.on('SIGTERM', () => agent.stop())
 
 agent.start().catch(error=>{
