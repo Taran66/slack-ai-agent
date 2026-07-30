@@ -12,6 +12,7 @@ const pool = new Pool({
     connectionTimeoutMillis: 2000,
 });
 
+
 pool.on('connect', () => {
     console.log('[INFO] Database connected')
 })

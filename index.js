@@ -218,7 +218,8 @@ class SlackAIAgent{
             -insights: array of 3-5 key observations
             -recommendations: array of 2-4 engagement suggestions
             
-            Consider job title, company size, technical background, and budget authority`
+            Consider job title, company size, technical background, and budget authority
+            Return ONLY valid JSON.`
         );
 
         try {
@@ -234,8 +235,10 @@ class SlackAIAgent{
             })
 
             const responseText = result.content || result;
+            console.log(responseText)
 
-            const cleanedResponse = responseText.replace(/```json\\n?|\\n?```/g, '').trim()
+            const cleanedResponse =
+                responseText.replace(/```json\n?|\n?```/g, '').trim()
 
             const analysis = JSON.parse(cleanedResponse)
 
