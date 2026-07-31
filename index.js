@@ -39,32 +39,31 @@ class SlackAIAgent{
     }
 
     setupSlackEvents() {
-        this.slack.event('team_join', async({event}) =>{
+        this.slack.event('team_join', async ({ event }) => {
             try {
-
-                log.info(`New member joind: ${event.user.real_name || event.user.name}`)
-
+                log.info(`New member joined: ${event.user.real_name ||
+                    event.user.name}`)
                 const userInfo = await this.getUserInfo(event.user.id);
                 await this.analyzeAndPostMember(userInfo);
-
-            } catch (error){
+            } catch (error) {
                 log.error('Error processing team_join:', error.message)
             }
-        })
+        });
 
-        this.slack.event('member_joined_channel', async({event}) => {
-            try{
-                if (event.channel_type === 'C'){
+        this.slack.event('member_joined_channel', async ({ event }) => {
+            try {
+                if (event.channel_type === 'C') {
                     log.info(`Member ${event.user} joined channel ${event.channel}`)
                     const userInfo = await this.getUserInfo(event.user);
                     await this.analyzeAndPostMember(userInfo)
                 }
-            } catch(error){
-                log.error('Error processing member_joined_channel: ', error.message)
+            } catch (error) {
+                log.error('Error processing member_joined_channel:', error.message)
             }
-        })
-        this.slack.error(async (error) => log.error('Slack error: ', error.message))
+        });
+        this.slack.error(async (error) => log.error('Slack error:', error.message))
     }
+
 
     setupExpress(){
         this.app.use(express.json());
@@ -158,11 +157,11 @@ class SlackAIAgent{
         try {
             const response = await axios.get(`https://www.${domain}`, {
                 timeout: 5000,
-                headers: {'User-Agent': 'Mozilla/5.0'}
-            })
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
 
-            const titleMatch = response.data.match(/<title>(.*)<\/title>/i)
-            const title = titleMatch ? titleMatch[1] : `Company: ${domain}`
+            const titleMatch = response.data.match(/<title>(.*?)<\/title>/i)
+            const title = titleMatch ? titleMatch[1] : `Company: ${domain}`;
 
             return {
                 url: `https://www.${domain}`,
@@ -171,7 +170,7 @@ class SlackAIAgent{
                 type: 'company'
             }
         } catch (error) {
-            log.error(`Could not fetch ${domain}:`, error.message)
+            log.error(`Could not fetch ${domain}:`, error.message);
             return null;
         }
     }
@@ -235,7 +234,6 @@ class SlackAIAgent{
             })
 
             const responseText = result.content || result;
-            console.log(responseText)
 
             const cleanedResponse =
                 responseText.replace(/```json\n?|\n?```/g, '').trim()
@@ -321,6 +319,7 @@ class SlackAIAgent{
                 }
             ]
         });
+        
 
         log.info(`Analysis posted to channel for ${member.name}`)
     }
@@ -383,3 +382,5 @@ agent.start().catch(error=>{
 })
 
 export default agent
+
+ 
